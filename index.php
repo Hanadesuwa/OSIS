@@ -14,7 +14,7 @@ if(!isset($_SESSION["user_id"]) or $_GET["page"] == "login"){
     exit;
 }
 }
-require DIR. '/vendor/autoload.php';
+
 if (isset($_POST["login"])) {
   try{
   session_start();

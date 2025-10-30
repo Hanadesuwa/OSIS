@@ -27,7 +27,7 @@ then
             lcd \"$LOCAL_DIR\";
             cd \"$REMOTE_DIR\";
             echo 'Starting recursive upload...';
-            mirror -R --verbose --continue --parallel=5 . .;
+            mirror -R --verbose --exclude-glob .git/ --continue --parallel=5 . .;
             bye;
             "
 

@@ -124,7 +124,7 @@
             body: formData
         })
         //debug by showing raw response
-        .then(response => response.text())
+        /*.then(response => response.text())
         .then(data => {
             modalTitle. textContent = "Response";
 
@@ -137,8 +137,8 @@ modal.classList.add("active");
 msg.classList.add("opacity-0", "scale-0");
 
 msg.classList.remove("bg-white/30", "opacity-100", "scale-100");
-        })
-            /*.then(response => response.json())
+        })*/
+            .then(response => response.json())
             .then(data => {
                 if (data.code === 0x1) {
                     // Add error classes based on the JSON response
@@ -171,7 +171,7 @@ msg.classList.remove("bg-white/30", "opacity-100", "scale-100");
                 modal.classList.add("active");
                 msg.classList.add("opacity-0", "scale-0");
                 msg.classList.remove("bg-white/30", "opacity-100", "scale-100");
-            });*/
+            });
     });
     function closeModal() {
         document.body.classList.remove("modal-open");
