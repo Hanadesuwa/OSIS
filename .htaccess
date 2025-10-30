@@ -10,7 +10,7 @@ Require all denied
 </IfModule>
 </Files>
 <IfModule mod_rewrite.c>
-    Options +FloowSymLinks
+    # Options +FloowSymLinks
     RewriteEngine On
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d

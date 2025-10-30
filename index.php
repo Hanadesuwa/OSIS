@@ -1,4 +1,8 @@
 <?php
+//use kreait/firebase-php
+require __DIR__ . '/vendor/autoload.php';
+use Kreait\Firebase\Factory;
+
 if(isset($_GET["page"])){
 if(!isset($_SESSION["user_id"]) or $_GET["page"] == "login"){
     $response = Array();
@@ -10,6 +14,7 @@ if(!isset($_SESSION["user_id"]) or $_GET["page"] == "login"){
     exit;
 }
 }
+require DIR. '/vendor/autoload.php';
 if (isset($_POST["login"])) {
   try{
   session_start();
@@ -31,6 +36,7 @@ if (isset($_POST["login"])) {
       exit();
     }
   }
+  
   $_SESSION["post_login"] = $time + 10;
   $factory = (new Factory())
     ->withServiceAccount(".private/private/serviceAccountKey.json")

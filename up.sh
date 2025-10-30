@@ -7,25 +7,28 @@ FTP_PASS="CgdKhAsEkZFS86"
 REMOTE_DIR="/public_html"  # Change to your target directory
 # ---------------------
 
+LOCAL_DIR="."                     # Source directory to upload (default: current dir)
+# ---------------------
+
 # Check if lftp is installed
 if ! command -v lftp &> /dev/null
 then
-    echo "lftp could not be found. Please install it first."
-        exit 1
-        fi
+    echo "lftp could not be found. It is *required* for recursive uploads."
+        echo "Please install it (e.g., sudo apt install lftp)"
+            exit 1
+            fi
 
-        echo "Connecting to $FTP_HOST..."
+            echo "Connecting to $FTP_HOST to recursively upload..."
 
-        # lftp commands
-        lftp -c "
-        set ftp:ssl-allow no;
-        open -u $FTP_USER,$FTP_PASS $FTP_HOST;
-        lcd .;
-        cd \"$REMOTE_DIR\";
-        echo 'Uploading files...';
-        mput *;
-        bye;
-        "
+            # lftp commands for a recursive "mirror" upload
+            lftp -c "
+            set ftp:ssl-allow no;
+            open -u $FTP_USER,$FTP_PASS $FTP_HOST;
+            lcd \"$LOCAL_DIR\";
+            cd \"$REMOTE_DIR\";
+            echo 'Starting recursive upload...';
+            mirror -R --verbose --continue --parallel=5 . .;
+            bye;
+            "
 
-        echo "Upload complete."
-        exit 0
+            echo "Recursive upload complete."
