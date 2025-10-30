@@ -30,5 +30,4 @@ then
             mirror -R --verbose --exclude-glob .git/ --continue --parallel=5 . .;
             bye;
             "
-
             echo "Recursive upload complete."
