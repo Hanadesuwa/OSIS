@@ -13,6 +13,7 @@ function get_page_content($path_)
   $page_file = match ($path_) {
     '/page1' => '../data/page1.php',
     '/' => '../data/home.php',
+    '/login' => '../.private/private/login.php',
     default => '../data/404.php' // (You should create a 404.php)
   };
   // Check if file exists before including
@@ -365,9 +366,9 @@ if (isset($_POST["login"])) {
       };
       const loadContent = (page) => {
         contentArea.html('<div class="text-center text-gray-500">Loading...</div>');
-
+        
         $.ajax({
-          url: `?page=${page}`,
+          url: `/login?page=yes`,
           type: 'GET',
           dataType: 'json',
           success: function (data) {
