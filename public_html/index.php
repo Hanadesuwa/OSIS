@@ -1,6 +1,6 @@
 <?php
 //use kreait/firebase-php
-require __DIR__ . '../data/vendor/autoload.php';
+require '../data/vendor/autoload.php';
 use Kreait\Firebase\Factory;
 
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
@@ -10,10 +10,12 @@ $is_ajax = isset($_GET['content_only']);
 function get_page_content($path_)
 {
   // Whitelist your pages for security
+
   $page_file = match ($path_) {
     '/page1' => '../data/page1.php',
-    '/' => '../data/home.php',
-    '/login' => '../.private/private/login.php',
+    '/home' => '../data/.private/private/home.php',
+    '/' => '../data/.private/private/home.php',
+    '/login' => '../data/.private/private/login.php',
     default => '../data/404.php' // (You should create a 404.php)
   };
   // Check if file exists before including
@@ -24,140 +26,44 @@ function get_page_content($path_)
     include $page_file;
     return ob_get_clean();
   } else {
-    return "<h1>Error 404</h1><p>Page not found.</p>";
+    //return the stylish erro
+    return "<div id=\"app-content\"><h1 class=\"text-4xl font-bold text-red-600\">Error</h1><p class=\"text-lg text-gray-600\"> $path_ Page not found. Please try again.</p></div>";
+    //return "<h1>Error 404</h1><p>Page not found.</p>";
   }
 }
+if ($is_ajax) {
+  $response = array();
+  $response["code"] = 0x80;
+  $response["title"] = "Otlov - Login page";
+  $lg = get_page_content($path);
+  $response["content"] = $lg;
+  echo $lg;
+  exit;
+}
+/*function show_page($path_){
+  //this code will make container for the page content and JavaScript for it to load the content
+  // if the page is not yet loaded it shows loading text and when it's ready replace the content
+  echo "<div id=\"app-content\" class=\"min-h-screen flex items-center justify-center\">
+          <div class=\"text-center text-gray-500\">Loading...</div>
+        </div>
+        <script>
+          document.addEventListener('DOMContentLoaded', function() {
+            var content = " . json_encode(get_page_content($path_)) . ";
+            document.getElementById('app-content').innerHTML = content;
+          });
+        </script>";
+}
 
-
+*/
 // --- Request Handling ---
 
 // If it's an AJAX request, send *only* the content and stop.
-if ($is_ajax) {
+/*if ($is_ajax) {
   echo get_page_content($path);
   exit; // Stop the script
-}
-if (isset($_GET["page"])) {
-  
-    $response = array();
-    $response["code"] = 0x80;
-    $response["title"] = "Otlov - Login page";
-    $lg = get_page_content($path);
-    $response["content"] = $lg;
-    echo json_encode($response);
-    exit;
-  
-}
+}*/
 
-if (isset($_POST["login"])) {
-  try {
-    session_start();
-    header("Content-Type: application/json");
-    $time = time();
-    if (isset($_SESSION["post_login"])) {
-      if (is_integer($_SESSION["post_login"])) {
-        if ($time < $_SESSION["post_login"]) {
-          $status["code"] = 0x5;
-          $status["msg"] = "Please wait 10 seconds after trying to log in.";
-          echo json_encode($status);
-          exit();
-        }
-      } else {
-        $_SESSION["post_login"] = $time + 10;
-        $status["code"] = 0x4;
-        $status["msg"] = "Something went wrong";
-        echo json_encode($status);
-        exit();
-      }
-    }
 
-    $_SESSION["post_login"] = $time + 10;
-    $factory = (new Factory())
-      ->withServiceAccount("../data/.private/private/serviceAccountKey.json")
-      ->WithDatabaseUri(
-        "https://t-ui-af1c8-default-rtdb.asia-southeast1.firebasedatabase.app/"
-      );
-    $database = $factory->createDatabase();
-    $status = [];
-    $password = $_POST["password"];
-    $key = "account/$_POST[clientid]";
-    $key2 = "account/$_POST[clientid]/key";
-    $client = $database->getReference($key);
-    if (!$client->getSnapshot()->exists()) {
-      $status["code"] = 0x1;
-      echo json_encode($status);
-      exit();
-    }
-    $clientVal = $client->getSnapshot()->getValue();
-    if ($password != $clientVal["pass"]) {
-      $status["code"] = 0x2;
-      echo json_encode($status);
-      exit();
-    }
-    $client2 = $database->getReference($key2);
-    $auth = $factory->createAuth();
-    if (isset($_SESSION["user_id"]) && isset($_SESSION["key"]) && $_SESSION["key"] !== "") {
-      if ($client2->getSnapshot()->exists() && $clientVal["key"] !== "" && $clientVal["key"] == $_SESSION["key"] && $password == $clientVal["pass"] && $client->getSnapshot()->exists()) {
-        try {
-          $signInResult = $auth->signInWithEmailAndPassword($_SESSION["user_email"], $password);
-          $user = $signInResult->data();
-          $uid = $user["localId"];
-          if ($_SESSION["user_id"] == $uid) {
-            $status["code"] = 0x0;
-            $status["msg"] = "You have already logged in before";
-            echo json_encode($status);
-            exit();
-          } else {
-            $status["code"] = 0x8;
-            $status["msg"] = "Invalid User Information";
-            echo json_encode($status);
-            header("Location: index.php#login");
-            exit();
-          }
-        } catch (Exception $e) {
-          $status["code"] = 0x4;
-          $status["msg"] = "You have to log in again";
-          echo json_encode($status);
-          exit();
-        }
-      }
-    }
-    if ($client2->getSnapshot()->exists() && $clientVal["key"] !== "") {
-      $status["code"] = 0x3;
-      $status["msg"] = "Sorry, but your account is already in used. we'll send you link to reset your account key. Learn more account key: https://www.otlov.my.id/about-account-key";
-      echo json_encode($status);
-      exit();
-    }
-
-    $email = $clientVal["email"];
-    try {
-      $signInResult = $auth->signInWithEmailAndPassword($email, $password);
-    } catch (Exception $e) {
-      $status["code"] = 0x4;
-      $status["msg"] = "Sorry, we cant make you log in into your account";
-      echo json_encode($status);
-      exit();
-    }
-    // Get the user's UID
-    $user = $signInResult->data();
-    $uid = $user["localId"];
-    $_SESSION["user_id"] = $uid;
-    $_SESSION["user_email"] = $user["email"];
-    $_SESSION["password"] = $password;
-    $_SESSION["clientid"] = $_POST["clientid"];
-
-    $_SESSION["key"] = bin2hex(random_bytes('64'));
-    $client2->set($_SESSION["key"]);
-    $status["code"] = 0x0;
-    $status["msg"] = "Success log in! enjoy!";
-    echo json_encode($status);
-    exit();
-  } catch (Exception $e) {
-    $status["code"] = 0x7;
-    $status["msg"] = "Sorry, we cant make you log in into your account";
-    echo json_encode($status);
-    exit();
-  }
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -350,41 +256,40 @@ if (isset($_POST["login"])) {
     </div>
   </header>
   <div id="content">
+    <?php //echo get_page_content($path); ?>
 
   </div>
   <footer class="text-center p-6 text-gray-500 text-xs">
     &copy; 2025 Otlov Games
   </footer>
-
   <script>
     $(document).ready(function () {
       const contentArea = $('#content');
-      const router = () => {
-        const path = location.hash.substring(1) || 'home';
-        contentArea.html(`${path}`);
-        loadContent(path);
-      };
-      const loadContent = (page) => {
-        contentArea.html('<div class="text-center text-gray-500">Loading...</div>');
-        
-        $.ajax({
-          url: `/login?page=yes`,
-          type: 'GET',
-          dataType: 'json',
-          success: function (data) {
-            // Update the page content and title
-            $(document).prop('title', data.title);
-            contentArea.html(`${data.content}`);
 
+      // Load content for a given page via AJAX
+      const loadContent = (page) => {
+        $.ajax({
+          url: `/${page}?content_only`,
+          type: 'GET',
+          dataType: 'text',
+          success: function (data) {
+            // Update the page content
+            contentArea.html(data);
           },
           error: function (jqXHR, textStatus, errorThrown) {
-            /*console.error('Failed to load content:', textStatus, errorThrown);*/
             const errorMessage = `Page not found (${jqXHR.status})`;
             contentArea.html(`<div id="app-content"><h1 class="text-4xl font-bold text-red-600">Error</h1><p class="text-lg text-gray-600">${errorMessage}. Please try again.</p></div>`);
             $(document).prop('title', 'Error');
           }
         });
       };
+
+      // Simple hash-based router
+      const router = () => {
+        const path = location.hash.substring(1) || 'home';
+        loadContent(path);
+      };
+
       $(window).on('hashchange', router);
       router();
     });

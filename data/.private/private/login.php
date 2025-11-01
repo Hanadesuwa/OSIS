@@ -1,3 +1,119 @@
+
+<?php
+require '../data/vendor/autoload.php';
+use Kreait\Firebase\Factory;
+if (isset($_POST["login"])) {
+  try {
+    session_start();
+    header("Content-Type: application/json");
+    $time = time();
+    if (isset($_SESSION["post_login"])) {
+      if (is_integer($_SESSION["post_login"])) {
+        if ($time < $_SESSION["post_login"]) {
+          $status["code"] = 0x5;
+          $status["msg"] = "Please wait 10 seconds after trying to log in.";
+          echo json_encode($status);
+          exit();
+        }
+      } else {
+        $_SESSION["post_login"] = $time + 10;
+        $status["code"] = 0x4;
+        $status["msg"] = "Something went wrong";
+        echo json_encode($status);
+        exit();
+      }
+    }
+
+    $_SESSION["post_login"] = $time + 10;
+    $factory = (new Factory())
+      ->withServiceAccount("../data/.private/private/serviceAccountKey.json")
+      ->WithDatabaseUri(
+        "https://t-ui-af1c8-default-rtdb.asia-southeast1.firebasedatabase.app/"
+      );
+    $database = $factory->createDatabase();
+    $status = [];
+    $password = $_POST["password"];
+    $key = "account/$_POST[clientid]";
+    $key2 = "account/$_POST[clientid]/key";
+    $client = $database->getReference($key);
+    if (!$client->getSnapshot()->exists()) {
+      $status["code"] = 0x1;
+      echo json_encode($status);
+      exit();
+    }
+    $clientVal = $client->getSnapshot()->getValue();
+    if ($password != $clientVal["pass"]) {
+      $status["code"] = 0x2;
+      echo json_encode($status);
+      exit();
+    }
+    $client2 = $database->getReference($key2);
+    $auth = $factory->createAuth();
+    if (isset($_SESSION["user_id"]) && isset($_SESSION["key"]) && $_SESSION["key"] !== "") {
+      if ($client2->getSnapshot()->exists() && $clientVal["key"] !== "" && $clientVal["key"] == $_SESSION["key"] && $password == $clientVal["pass"] && $client->getSnapshot()->exists()) {
+        try {
+          $signInResult = $auth->signInWithEmailAndPassword($_SESSION["user_email"], $password);
+          $user = $signInResult->data();
+          $uid = $user["localId"];
+          if ($_SESSION["user_id"] == $uid) {
+            $status["code"] = 0x0;
+            $status["msg"] = "You have already logged in before";
+            echo json_encode($status);
+            exit();
+          } else {
+            $status["code"] = 0x8;
+            $status["msg"] = "Invalid User Information";
+            echo json_encode($status);
+            header("Location: index.php#login");
+            exit();
+          }
+        } catch (Exception $e) {
+          $status["code"] = 0x4;
+          $status["msg"] = "You have to log in again";
+          echo json_encode($status);
+          exit();
+        }
+      }
+    }
+    if ($client2->getSnapshot()->exists() && $clientVal["key"] !== "") {
+      $status["code"] = 0x3;
+      $status["msg"] = "Sorry, but your account is already in used. we'll send you link to reset your account key. Learn more account key: https://www.otlov.my.id/about-account-key";
+      echo json_encode($status);
+      exit();
+    }
+
+    $email = $clientVal["email"];
+    try {
+      $signInResult = $auth->signInWithEmailAndPassword($email, $password);
+    } catch (Exception $e) {
+      $status["code"] = 0x4;
+      $status["msg"] = "Sorry, we cant make you log in into your account";
+      echo json_encode($status);
+      exit();
+    }
+    // Get the user's UID
+    $user = $signInResult->data();
+    $uid = $user["localId"];
+    $_SESSION["user_id"] = $uid;
+    $_SESSION["user_email"] = $user["email"];
+    $_SESSION["password"] = $password;
+    $_SESSION["clientid"] = $_POST["clientid"];
+
+    $_SESSION["key"] = bin2hex(random_bytes('64'));
+    $client2->set($_SESSION["key"]);
+    $status["code"] = 0x0;
+    $status["msg"] = "Success log in! enjoy!";
+    echo json_encode($status);
+    exit();
+  } catch (Exception $e) {
+    $status["code"] = 0x7;
+    $status["msg"] = "Sorry, we cant make you log in into your account";
+    echo json_encode($status);
+    exit();
+  }
+  exit();
+}
+?>
 <div
     class="h-auto w-full flex fixed top-12 items-center justify-center flex-col p-4 space-y-2 z-40"
 >
@@ -119,7 +235,7 @@
         formData.append("password", pass);
         msg.classList.remove("opacity-0", "scale-0");
         msg.classList.add("bg-white/30", "opacity-100", "scale-100");
-        await fetch("", {
+        await fetch("/login?content_only", {
             method: "POST",
             body: formData
         })
